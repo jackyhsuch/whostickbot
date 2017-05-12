@@ -1,7 +1,7 @@
 from os import path, environ
 from dotenv import load_dotenv
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Updater
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, CallbackQueryHandler, RegexHandler, Filters
 
@@ -36,7 +36,12 @@ def main():
     )
     logger = logging.getLogger(__name__)
 
-    # tag mode handler
+    # main menu
+    dispatcher.add_handler(CommandHandler("start", start))
+
+
+
+    ### tag mode handler ########################################
     tag_handler = ConversationHandler(
         entry_points=[CommandHandler('tag', tag, pass_user_data=True)],
 
@@ -56,6 +61,8 @@ def main():
     )
 
     dispatcher.add_handler(tag_handler)
+    #############################################################
+
 
     # log all errors
     dispatcher.add_error_handler(error)
@@ -63,6 +70,27 @@ def main():
     # start poll
     updater.start_polling()
     updater.idle()
+
+
+def start(bot, update):
+    # let users choose tag mode or sticker mode
+    mode_keyboard = [['/tag', '/sticker']]
+    reply_markup = ReplyKeyboardMarkup(mode_keyboard, one_time_keyboard=True)
+
+    update.message.reply_text("Choose mode:", reply_markup=reply_markup)
+
+def start_action_handler(bot, update):
+    query = update.callback_query
+
+    # tag mode
+    if query.data == "start_action_0":
+        query.message.reply_text(":")
+        return ADDING_TAG
+
+    # sticker mode
+    if query.data == "start_action_1":
+        pass
+
 
 
 def tag(bot, update, user_data):
@@ -85,7 +113,7 @@ def tag_action_handler(bot, update, user_data):
         return ADDING_TAG
 
     if query.data == "tag_action_1":
-        query.message.reply_text("Choose tag:")
+        query.message.reply_text("Choose tag (or /back):")
         return DELETING_TAG
 
 
