@@ -1,8 +1,9 @@
 from os import path, environ
 from dotenv import load_dotenv
 
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater
-from telegram.ext import CommandHandler
+from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, CallbackQueryHandler, RegexHandler, Filters
 
 import logging
 
@@ -31,7 +32,7 @@ def main():
     # logging
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
+        level=logging.DEBUG
     )
     logger = logging.getLogger(__name__)
 
@@ -40,8 +41,7 @@ def main():
         entry_points=[CommandHandler('tag', tag, pass_user_data=True)],
 
         states={
-            CHOOSING_TAG_ACTION: [RegexHandler('^Add new tag$',
-                                    add_tag_action,
+            CHOOSING_TAG_ACTION: [CallbackQueryHandler(tag_action_handler,
                                     pass_user_data=True),
                                 ],
 
@@ -51,10 +51,13 @@ def main():
                             ],
         },
 
-        fallbacks=[RegexHandler('^Done$', done, pass_user_data=True)]
+        fallbacks=[RegexHandler('^Done$', tag_done, pass_user_data=True)]
     )
 
     dispatcher.add_handler(tag_handler)
+
+    # log all errors
+    dispatcher.add_error_handler(error)
 
     # start poll
     updater.start_polling()
@@ -63,20 +66,41 @@ def main():
 
 def tag(bot, update, user_data):
     # return inline keyboard to choose tag action (add or delete)
-    user_id = update.message.from_user.id
-    update.message.reply_text(user_id)
+    tag_action_keyboard = [[InlineKeyboardButton("Add tag", callback_data="tag_action_0"),
+                 InlineKeyboardButton("Delete tag", callback_data="tag_action_1")]]
+
+    update.message.reply_text("Choose action:", reply_markup=InlineKeyboardMarkup(tag_action_keyboard))
+
+    user_data['id'] = update.message.from_user.id
+
 
     return CHOOSING_TAG_ACTION
 
-def add_tag_action(bot, update, user_data):
-    # ask user for tag name input
+def tag_action_handler(bot, update, user_data):
+    query = update.callback_query
 
-    return ADDING_TAG
+    if query.data == "tag_action_0":
+        query.message.reply_text("Enter tag name:")
+        return ADDING_TAG
+
+    if query.data == "tag_action_1":
+        query.message.reply_text("Choose tag:")
+        return DELETING_TAG
 
 def add_tag_to_db(bot, update, user_data):
     # add tag to database
+    update.message.reply_text("Inside add_tag_to_db")
 
     return CHOOSING_TAG_ACTION
+
+def tag_done(bot, update, user_data):
+    update.message.reply_text("Bye bye")
+    user_data.clear()
+
+    return ConversationHandler.END
+
+def error(bot, update, error):
+    logger.warn('Update "%s" caused error "%s"' % (update, error))
 
 
 if __name__ == '__main__':
