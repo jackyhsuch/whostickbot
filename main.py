@@ -46,12 +46,13 @@ def main():
                                 ],
 
             ADDING_TAG: [MessageHandler(Filters.text,
-                                           add_tag_to_db,
-                                           pass_user_data=True),
-                            ],
+                            add_tag_to_db,
+                            pass_user_data=True),
+                        CommandHandler('back', tag, pass_user_data=True),
+                        ],
         },
 
-        fallbacks=[RegexHandler('^Done$', tag_done, pass_user_data=True)]
+        fallbacks=[RegexHandler('^end$', tag_end, pass_user_data=True)]
     )
 
     dispatcher.add_handler(tag_handler)
@@ -80,20 +81,23 @@ def tag_action_handler(bot, update, user_data):
     query = update.callback_query
 
     if query.data == "tag_action_0":
-        query.message.reply_text("Enter tag name:")
+        query.message.reply_text("Enter tag name (or /back):")
         return ADDING_TAG
 
     if query.data == "tag_action_1":
         query.message.reply_text("Choose tag:")
         return DELETING_TAG
 
+
 def add_tag_to_db(bot, update, user_data):
     # add tag to database
-    update.message.reply_text("Inside add_tag_to_db")
 
-    return CHOOSING_TAG_ACTION
+    # send msg to user
+    update.message.reply_text("Enter tag name (or /back):")
 
-def tag_done(bot, update, user_data):
+    return ADDING_TAG
+
+def tag_end(bot, update, user_data):
     update.message.reply_text("Bye bye")
     user_data.clear()
 
