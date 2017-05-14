@@ -23,6 +23,6 @@ class Database:
         return
 
     def find_tag_by_user(self, user_uuid):
-        self.session.query.filter(Sticker.uuid == user_uuid)
+        result = self.session.query.filter(Tag.user_uuid == user_uuid)
 
-        return
+        return result
