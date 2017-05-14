@@ -1,9 +1,10 @@
-from os import path, environ
-from dotenv import load_dotenv
-
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Updater
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, CallbackQueryHandler, RegexHandler, Filters
+
+from models import Tag
+from database import Database
+from environment import Environment
 
 import logging
 
@@ -18,15 +19,13 @@ CHOOSING_STICKER_ACTION = 4
 ADDING_STICKER = 5
 DELETING_STICKER = 6
 
-def main():
-    try:
-        dotenv_path = path.join(path.dirname(__file__), '.env')
-        load_dotenv(dotenv_path)
-    except Exception as e:
-        raise
+environment = Environment()
+database = Database(environment.DB_URI)
 
+
+def Main():
     # set environment
-    updater = Updater(token=environ.get('TOKEN'))
+    updater = Updater(environment.TOKEN)
     dispatcher = updater.dispatcher
 
     # logging
@@ -46,7 +45,7 @@ def main():
         entry_points=[CommandHandler('tag', tag, pass_user_data=True)],
 
         states={
-            CHOOSING_TAG_ACTION: [CallbackQueryHandler(tag_action_handler,
+            CHOOSING_TAG_ACTION: [CallbackQueryHandler(choose_tag_action,
                                     pass_user_data=True),
                                 ],
 
@@ -61,6 +60,23 @@ def main():
     )
 
     dispatcher.add_handler(tag_handler)
+    #############################################################
+
+    ### stciker mode handler ####################################
+    sticker_handler = ConversationHandler(
+        entry_points=[CommandHandler('sticker', sticker, pass_user_data=True)],
+
+        states={
+            ADDING_STICKER: [CallbackQueryHandler(add_sticker,
+                                    pass_user_data=True),
+                            ],
+
+        },
+
+        fallbacks=[RegexHandler('^end$', tag_end, pass_user_data=True)]
+    )
+
+    dispatcher.add_handler(sticker_handler)
     #############################################################
 
 
@@ -79,18 +95,13 @@ def start(bot, update):
 
     update.message.reply_text("Choose mode:", reply_markup=reply_markup)
 
-def start_action_handler(bot, update):
-    query = update.callback_query
 
-    # tag mode
-    if query.data == "start_action_0":
-        query.message.reply_text(":")
-        return ADDING_TAG
+def sticker(bot, updater, user_data):
+    #get all user's tag
 
-    # sticker mode
-    if query.data == "start_action_1":
-        pass
+    update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(tag_action_keyboard))
 
+    return ADDING_STICKER
 
 
 def tag(bot, update, user_data):
@@ -105,7 +116,7 @@ def tag(bot, update, user_data):
 
     return CHOOSING_TAG_ACTION
 
-def tag_action_handler(bot, update, user_data):
+def choose_tag_action(bot, update, user_data):
     query = update.callback_query
 
     if query.data == "tag_action_0":
@@ -119,6 +130,8 @@ def tag_action_handler(bot, update, user_data):
 
 def add_tag_to_db(bot, update, user_data):
     # add tag to database
+    tagObject = Tag(user_uuid=user_data['id'] , name=update.message.text)
+    database.add_tag(tagObject)
 
     # send msg to user
     update.message.reply_text("Enter tag name (or /back):")
@@ -136,4 +149,4 @@ def error(bot, update, error):
 
 
 if __name__ == '__main__':
-    main()
+    Main()
