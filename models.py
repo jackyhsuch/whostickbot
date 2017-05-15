@@ -15,6 +15,6 @@ class Sticker(Base):
     __tablename__ = 'stickers'
 
     id = Column(Integer, primary_key=True)
-    sticker_uuid = Column(Integer)
+    sticker_uuid = Column(String)
     user_uuid = Column(Integer)
     tag_id = Column(Integer)

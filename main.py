@@ -2,11 +2,12 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMa
 from telegram.ext import Updater
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, CallbackQueryHandler, RegexHandler, Filters
 
-from models import Tag
+from models import Tag, Sticker
 from database import Database
 from environment import Environment
 
 import logging
+import json
 
 # tag states
 CHOOSING_TAG_ACTION = 0
@@ -109,7 +110,12 @@ def sticker(bot, update, user_data):
 
     sticker_tag_keyboard = []
     for tagObject in tagObjects:
-        sticker_tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=tagObject.name)])
+        callbackDict = {
+            'id': tagObject.id,
+            'name': tagObject.name
+        }
+
+        sticker_tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False))])
 
 
     update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(sticker_tag_keyboard))
@@ -119,13 +125,25 @@ def sticker(bot, update, user_data):
 
 def choose_sticker(bot, update, user_data):
     query = update.callback_query
-    query.message.reply_text("Send me sticker to tag it under *" + query.data +"*", parse_mode=ParseMode.MARKDOWN)
+    tagDict = json.loads(query.data)
+    query.message.reply_text("Send sticker to tag it under *" + tagDict["name"] +"*", parse_mode=ParseMode.MARKDOWN)
+
+    user_data['tag_id'] = tagDict["id"]
 
     return ADDING_STICKER
 
 
 def add_sticker_to_db(bot, update, user_data):
-    pass
+
+    stickerObject = Sticker(sticker_uuid=update.message.sticker.file_id,
+                            user_uuid=user_data['id'] ,
+                            tag_id=int(user_data['tag_id']))
+    database.add_sticker(stickerObject)
+
+    update.message.reply_text("Send more sticker:")
+
+    return ADDING_STICKER
+
 
 
 def tag(bot, update, user_data):
