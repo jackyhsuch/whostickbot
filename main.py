@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ParseMode
 from telegram.ext import Updater
 from telegram.ext import CommandHandler, ConversationHandler, MessageHandler, CallbackQueryHandler, RegexHandler, Filters
 
@@ -14,7 +14,7 @@ ADDING_TAG = 1
 DELETING_TAG = 2
 
 # sticker states
-CHOOSING_STICKER_TAG = 3
+CHOOSING_STICKER = 3
 CHOOSING_STICKER_ACTION = 4
 ADDING_STICKER = 5
 DELETING_STICKER = 6
@@ -67,8 +67,13 @@ def Main():
         entry_points=[CommandHandler('sticker', sticker, pass_user_data=True)],
 
         states={
-            ADDING_STICKER: [CallbackQueryHandler(add_sticker,
+            CHOOSING_STICKER: [CallbackQueryHandler(choose_sticker,
                                     pass_user_data=True),
+                            ],
+
+            ADDING_STICKER: [MessageHandler(Filters.sticker,
+                                add_sticker_to_db,
+                                pass_user_data=True),
                             ],
 
         },
@@ -96,12 +101,31 @@ def start(bot, update):
     update.message.reply_text("Choose mode:", reply_markup=reply_markup)
 
 
-def sticker(bot, updater, user_data):
-    #get all user's tag
+def sticker(bot, update, user_data):
+    user_data['id'] = update.message.from_user.id
 
-    update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(tag_action_keyboard))
+    #get all user's tag
+    tagObjects = database.find_tag_by_user(user_data['id'])
+
+    sticker_tag_keyboard = []
+    for tagObject in tagObjects:
+        sticker_tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=tagObject.name)])
+
+
+    update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(sticker_tag_keyboard))
+
+    return CHOOSING_STICKER
+
+
+def choose_sticker(bot, update, user_data):
+    query = update.callback_query
+    query.message.reply_text("Send me sticker to tag it under *" + query.data +"*", parse_mode=ParseMode.MARKDOWN)
 
     return ADDING_STICKER
+
+
+def add_sticker_to_db(bot, update, user_data):
+    pass
 
 
 def tag(bot, update, user_data):
@@ -113,8 +137,8 @@ def tag(bot, update, user_data):
 
     user_data['id'] = update.message.from_user.id
 
-
     return CHOOSING_TAG_ACTION
+
 
 def choose_tag_action(bot, update, user_data):
     query = update.callback_query
