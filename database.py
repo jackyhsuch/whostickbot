@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models import Tag, Sticker
+from models import Tag, Sticker, UserSession
     
 class Database:
     def __init__(self, db_uri):
@@ -25,8 +25,57 @@ class Database:
 
         return
 
+    def delete_sticker_by_userid_and_tagid_stickeruuid(self, user_id, tag_id, sticker_uuid):
+        stickerObject = self.session.query(Sticker).filter_by(user_id=user_id, tag_id=tag_id, sticker_uuid=sticker_uuid).first()
+        self.session.delete(stickerObject)
+        self.session.commit()
 
-    def find_tag_by_user(self, user_uuid):
-        result = self.session.query(Tag).filter(Tag.user_uuid == user_uuid)
+        return
+
+
+    def get_tag_by_userid(self, user_id):
+        result = self.session.query(Tag).filter(Tag.user_id == user_id)
 
         return result
+
+
+    def get_tag_by_userid_and_tagname(self, user_id, tag_name):
+        result = self.session.query(Tag).filter(Tag.user_id == user_id, Tag.name == tag_name)
+
+        return result
+
+    def get_tagname_by_tagid(self, tag_id):
+        result = self.session.query(Tag).filter(Tag.id == tag_id)
+
+        return result.first().name
+
+
+    def get_sticker_by_userid_and_tagid(self, user_id, tag_id):
+        result = self.session.query(Sticker).filter(Sticker.user_id == user_id, Sticker.tag_id == tag_id)
+
+        return result
+
+
+    def add_session(self, userSessionObject):
+        self.session.add(userSessionObject)
+        self.session.commit()
+
+        return
+
+
+    def get_session_by_userid(self, user_id):
+        result = self.session.query(UserSession).filter_by(user_id=user_id)
+
+        return result.first()
+
+
+    def update_session(self, user_id, mode, state, tag_id=None):
+        userSessionObject = self.session.query(UserSession).filter_by(user_id=user_id).first()
+
+        userSessionObject.mode = mode
+        userSessionObject.state = state
+        userSessionObject.tag_id = tag_id
+
+        self.session.commit()
+
+        return
