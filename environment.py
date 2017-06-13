@@ -15,6 +15,7 @@ class Environment():
 
         self.TOKEN = environ.get('TOKEN')
         self.IS_PROD = int(environ.get("IS_PROD"))
+        self.APP_NAME = environ.get("APP_NAME")
 
         if self.IS_PROD:
             url = urlparse.urlparse(environ['DATABASE_URL'])

@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 def Main():
     # set environment
-    updater = Updater(environment.TOKEN)
+    updater = Updater(token=environment.TOKEN, workers=32)
     dispatcher = updater.dispatcher
 
 
@@ -83,7 +83,14 @@ def Main():
     dispatcher.add_error_handler(error)
 
     # start poll
-    updater.start_polling()
+    if environment.IS_PROD:
+        self.updater.start_webhook(listen="0.0.0.0",
+                                       port=environment.PORT,
+                                       url_path=environment.TOKEN)
+        self.updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(environment.APP_NAME, environment.TOKEN))
+    else:
+        updater.start_polling()
+
     updater.idle()
 
 
