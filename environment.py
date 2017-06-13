@@ -31,6 +31,6 @@ class Environment():
             self.DB_PORT = environ.get("DB_PORT")
             self.DB_HOST = environ.get("DB_HOST")
 
-        self.DB_URI = "postgresql+psycopg2://" + self.DB_USER + ":" + self.DB_PASS + "@" + self.DB_HOST + ":" + self.DB_PORT + "/" + self.DB_NAME
+        self.DB_URI = "postgresql+psycopg2://" + self.DB_USER + ":" + self.DB_PASS + "@" + self.DB_HOST + ":" + str(self.DB_PORT) + "/" + self.DB_NAME
 
 
