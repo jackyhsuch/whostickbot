@@ -85,7 +85,7 @@ def Main():
     # start poll
     if environment.IS_PROD:
         updater.start_webhook(listen="0.0.0.0",
-                                       port=environment.DB_PORT,
+                                       port=environment.PORT,
                                        url_path=environment.TOKEN)
         updater.bot.setWebhook("https://{}.herokuapp.com/{}".format(environment.APP_NAME, environment.TOKEN))
     else:
