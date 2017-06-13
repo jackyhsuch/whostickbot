@@ -94,6 +94,16 @@ def Main():
     updater.idle()
 
 
+def check_new_user(user_id):
+    userSessionObject = database.get_session_by_userid(user_id)
+
+    if not userSessionObject:
+        userSessionObject = UserSession(user_id=user_id,
+                        mode=NO_MODE,
+                        state=NO_STATE)
+        database.add_session(userSessionObject)
+
+
 def check_session(user_id, mode, state):
     # if user_id in db check for mode and state
     userSessionObject = database.get_session_by_userid(user_id)
@@ -134,6 +144,7 @@ def inlinequery(bot, update):
 
 
 def start(bot, update):
+    check_new_user(update.message.from_user.id)
     # let users choose tag mode or sticker mode
     mode_keyboard = [['/tag', '/sticker']]
     reply_markup = ReplyKeyboardMarkup(mode_keyboard, one_time_keyboard=True)
@@ -143,6 +154,7 @@ def start(bot, update):
 
 def sticker(bot, update):
     user_id = update.message.from_user.id
+    check_new_user(user_id)
 
     #get all user's tag
     tagObjects = database.get_tag_by_userid(user_id)
@@ -222,6 +234,7 @@ def sticker_add(bot, update):
 
 def tag(bot, update):
     user_id = update.message.from_user.id
+    check_new_user(user_id)
 
     tag_action_keyboard = [[InlineKeyboardButton("Add tag", callback_data="tag_action_add")],
                  [InlineKeyboardButton("Delete tag", callback_data="tag_action_delete")]]
