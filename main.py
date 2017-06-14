@@ -10,11 +10,7 @@ from uuid import uuid4
 import logging
 import json
 
-NO_MODE = 0
 NO_STATE = 0
-
-TAG_MODE = 1
-STICKER_MODE = 2
 
 # tag states
 TAG_ACTION_QUERY_WAITING_STATE = 1
@@ -22,9 +18,10 @@ TAG_ADD_WAITING_STATE = 2
 TAG_DELETE_WAITING_STATE = 3
 
 # sticker states
-STICKER_TAG_QUERY_WAITING_STATE = 1
-STICKER_ADD_WAITING_STATE = 2
-STICKER_DELETE_WAITING_STATE = 3
+STICKER_TAG_WAITING_STATE = 4
+STICKER_ACTION_WAITING_STATE = 5
+STICKER_ADD_WAITING_STATE = 6
+STICKER_DELETE_WAITING_STATE = 7
 
 environment = Environment()
 database = Database(environment.DB_URI)
@@ -42,31 +39,29 @@ def Main():
     updater = Updater(token=environment.TOKEN, workers=32)
     dispatcher = updater.dispatcher
 
+    # start - choosing tag or sticker mode
+    start_handler = CommandHandler('start', start)
+    dispatcher.add_handler(start_handler)
+    # create new tag
+    newtag_handler = CommandHandler('newtag', newtag)
+    dispatcher.add_handler(newtag_handler)
+    # delete tag
+    deletetag_handler = CommandHandler('deletetag', deletetag)
+    dispatcher.add_handler(deletetag_handler)
+    # edit tag - add stickers
+    edittag_handler = CommandHandler('edittag', edittag)
+    dispatcher.add_handler(edittag_handler)
+    # end - exit bot
+    end_handler = CommandHandler('end', end)
+    dispatcher.add_handler(end_handler)
 
-
-    # # start - choosing tag or sticker mode
-    # start_handler = CommandHandler('start', start)
-    # dispatcher.add_handler(start_handler)
-
-    # tag menu - choosing add/delete tag (using callbackquery)
-    tag_handler = CommandHandler('tag', tag)
-    dispatcher.add_handler(tag_handler)
 
     # tag add - adding tag name
     tag_add_handler = MessageHandler(Filters.text, tag_add)
     dispatcher.add_handler(tag_add_handler)
-
-
-
-
-    # sticker menu - choose tag (using callbackquery)
-    sticker_handler = CommandHandler('sticker', sticker)
-    dispatcher.add_handler(sticker_handler)
-
     # sticker add - adding sticker to db
-    sticker_add_handler = MessageHandler(Filters.sticker, sticker_add)
-    dispatcher.add_handler(sticker_add_handler)
-
+    sticker_action_handler = MessageHandler(Filters.sticker, sticker_action)
+    dispatcher.add_handler(sticker_action_handler)
 
 
     # tag query - handle all the callback query of tag
@@ -74,13 +69,13 @@ def Main():
     dispatcher.add_handler(all_callback_query_handler)
 
 
-
-
     # inline query
     dispatcher.add_handler(InlineQueryHandler(inlinequery))
 
+
     # log all errors
     dispatcher.add_error_handler(error)
+
 
     # start poll
     if environment.IS_PROD:
@@ -98,35 +93,28 @@ def check_new_user(user_id):
     userSessionObject = database.get_session_by_userid(user_id)
 
     if not userSessionObject:
-        userSessionObject = UserSession(user_id=user_id,
-                        mode=NO_MODE,
-                        state=NO_STATE)
+        userSessionObject = UserSession(user_id=user_id, state=NO_STATE)
         database.add_session(userSessionObject)
 
 
-def check_session(user_id, mode, state):
+def check_session(user_id, state):
     # if user_id in db check for mode and state
     userSessionObject = database.get_session_by_userid(user_id)
 
     # if not in db, add in new user session
     if not userSessionObject:
-        userSessionObject = UserSession(user_id=user_id,
-                        mode=NO_MODE,
-                        state=NO_STATE)
+        userSessionObject = UserSession(user_id=user_id, state=NO_STATE)
         database.add_session(userSessionObject)
 
-    if userSessionObject.mode == mode and userSessionObject.state == state:
+    if userSessionObject.state == state:
         return userSessionObject
     
     return False
 
 @run_async
 def inlinequery(bot, update):
-    tag_name = update.inline_query.query
+    tag_name = update.inline_query.query.lower()
     user_id = update.inline_query.from_user.id
-
-    logger.info(user_id)
-    logger.info(tag_name)
 
     results = list()
 
@@ -144,15 +132,48 @@ def inlinequery(bot, update):
 
 
 def start(bot, update):
-    check_new_user(update.message.from_user.id)
-    # let users choose tag mode or sticker mode
-    mode_keyboard = [['/tag', '/sticker']]
-    reply_markup = ReplyKeyboardMarkup(mode_keyboard, one_time_keyboard=True)
+    user_id = update.message.from_user.id
+    check_new_user(user_id)
 
-    update.message.reply_text("Choose mode:", reply_markup=reply_markup)
+    update.message.reply_text("Welcome to WhoStickBot!\n\n/newtag : to add tag\n/edittag : to add stickers\n/deletetag : to delete tag\n/end : to exit bot", parse_mode=ParseMode.MARKDOWN)
+
+    return
+
+def newtag(bot, update):
+    user_id = update.message.from_user.id
+    check_new_user(user_id)
+
+    update.message.reply_text("Enter tag name:")
+    database.update_session(user_id, TAG_ADD_WAITING_STATE)
+
+    return
 
 
-def sticker(bot, update):
+def deletetag(bot, update):
+    user_id = update.message.from_user.id
+    check_new_user(user_id)
+
+    #get all user's tag
+    tagObjects = database.get_tag_by_userid(user_id)
+
+    tag_keyboard = []
+    for tagObject in tagObjects:
+        callbackDict = {
+            'id': tagObject.id,
+            'name': tagObject.name
+        }
+
+        tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False))])
+
+
+    update.message.reply_text("Choose tag to delete:", reply_markup=InlineKeyboardMarkup(tag_keyboard))
+
+    database.update_session(user_id, TAG_DELETE_WAITING_STATE)
+
+    return
+
+
+def edittag(bot, update):
     user_id = update.message.from_user.id
     check_new_user(user_id)
 
@@ -171,18 +192,15 @@ def sticker(bot, update):
 
     update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(sticker_tag_keyboard))
 
-    database.update_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE)
+    database.update_session(user_id, STICKER_TAG_WAITING_STATE)
 
     return
 
 
-
-
-def sticker_add(bot, update):
+def sticker_action(bot, update):
     user_id = update.message.from_user.id
 
-    userSessionObject = check_session(user_id, STICKER_MODE, STICKER_ADD_WAITING_STATE)
-
+    userSessionObject = check_session(user_id, STICKER_ADD_WAITING_STATE)
     if userSessionObject:
         tag_id = userSessionObject.tag_id
         tag_name = database.get_tagname_by_tagid(tag_id)
@@ -192,75 +210,39 @@ def sticker_add(bot, update):
                                 tag_id=userSessionObject.tag_id)
         database.add_sticker(stickerObject)
 
-        # ask user to choose action - add more/done
-        callbackDict = {
-            'id': tag_id,
-            'name': tag_name
-        }
+        update.message.reply_text("Sticker added!\nContinue sending to add more!\n\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
 
-        sticker_add_keyboard = [[InlineKeyboardButton("Back", callback_data=json.dumps(callbackDict, ensure_ascii=False))],
-                     [InlineKeyboardButton("Done", callback_data="sticker_done")]]
-
-        update.message.reply_text('Sticker added!', reply_markup=InlineKeyboardMarkup(sticker_add_keyboard))
-
-        database.update_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE)
+        database.update_session(user_id, STICKER_ADD_WAITING_STATE)
 
     
-    userSessionObject = check_session(user_id, STICKER_MODE, STICKER_DELETE_WAITING_STATE)
-
+    userSessionObject = check_session(user_id, STICKER_DELETE_WAITING_STATE)
     if userSessionObject:
-        logger.info("here")
         sticker_to_delete_uuid = update.message.sticker.file_id
         tag_id = userSessionObject.tag_id
         tag_name = database.get_tagname_by_tagid(tag_id)
 
         database.delete_sticker_by_userid_and_tagid_stickeruuid(user_id, tag_id, sticker_to_delete_uuid)
 
-        # ask user to choose action - add more/done
-        callbackDict = {
-            'id': tag_id,
-            'name': tag_name
-        }
+        update.message.reply_text("Sticker deleted!\nContinue sending to delete more!\n\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
 
-        sticker_add_keyboard = [[InlineKeyboardButton("Back", callback_data=json.dumps(callbackDict, ensure_ascii=False))],
-                     [InlineKeyboardButton("Done", callback_data="sticker_done")]]
-
-        update.message.reply_text('Sticker deleted!', reply_markup=InlineKeyboardMarkup(sticker_add_keyboard))
-
-        database.update_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE)
+        database.update_session(user_id, STICKER_DELETE_WAITING_STATE)
 
     return
 
 
-def tag(bot, update):
-    user_id = update.message.from_user.id
-    check_new_user(user_id)
 
-    tag_action_keyboard = [[InlineKeyboardButton("Add tag", callback_data="tag_action_add")],
-                 [InlineKeyboardButton("Delete tag", callback_data="tag_action_delete")]]
-
-    update.message.reply_text("Choose action:", reply_markup=InlineKeyboardMarkup(tag_action_keyboard))
-
-    database.update_session(user_id, TAG_MODE, TAG_ACTION_QUERY_WAITING_STATE)
-
-    return
 
 
 def tag_add(bot, update):
     user_id = update.message.from_user.id
 
-    if check_session(user_id, TAG_MODE, TAG_ADD_WAITING_STATE):
+    if check_session(user_id, TAG_ADD_WAITING_STATE):
         # add tag to database
-        tagObject = Tag(user_id=user_id, name=update.message.text)
+        tagObject = Tag(user_id=user_id, name=update.message.text.lower())
         database.add_tag(tagObject)
 
-        # ask user to choose action - add more/done
-        tag_action_keyboard = [[InlineKeyboardButton("Add more", callback_data="tag_action_add")],
-                     [InlineKeyboardButton("Done", callback_data="tag_action_done")]]
-
-        update.message.reply_text('"'+update.message.text+'" added!', reply_markup=InlineKeyboardMarkup(tag_action_keyboard))
-
-        database.update_session(user_id, TAG_MODE, TAG_ACTION_QUERY_WAITING_STATE)
+        update.message.reply_text("/edittag : add sticker to tag\n/newtag : add more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        database.update_session(user_id, TAG_ACTION_QUERY_WAITING_STATE)
 
     return
 
@@ -269,57 +251,49 @@ def all_callback_query(bot, update):
     user_id = update.callback_query.from_user.id
     query = update.callback_query
 
-    if check_session(user_id, TAG_MODE, TAG_ACTION_QUERY_WAITING_STATE):
-        if query.data == "tag_action_add":
-            query.message.reply_text("Enter tag name:")
-            database.update_session(user_id, TAG_MODE, TAG_ADD_WAITING_STATE)
+    userSessionObject = check_session(user_id, STICKER_ACTION_WAITING_STATE)
+    if userSessionObject:
+        if query.data == "sticker_action_add":
+            tag_name = database.get_tagname_by_tagid(userSessionObject.tag_id)
 
-        if query.data == "tag_action_delete":
-            query.message.reply_text("Choose tag:")
-            database.update_session(user_id, TAG_MODE, TAG_DELETE_WAITING_STATE)
-
-        if query.data == "tag_action_done":
-            query.message.reply_text("Thank you for using WhoStickBot!")
-            database.update_session(user_id, NO_MODE, NO_STATE)
-
-    if check_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE):
-        userSessionObject = check_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE)
-
-        if query.data == "sticker_done":
-            query.message.reply_text("Thank you for using WhoStickBot!")
-            database.update_session(user_id, NO_MODE, NO_STATE)
-
-        elif query.data == "sticker_action_add":
-            if userSessionObject:
-                tag_name = database.get_tagname_by_tagid(userSessionObject.tag_id)
-
-                query.message.reply_text("Send sticker to tag it under *" + tag_name +"*", parse_mode=ParseMode.MARKDOWN)
-                database.update_session(user_id, STICKER_MODE, STICKER_ADD_WAITING_STATE, userSessionObject.tag_id)
+            query.message.reply_text("Send sticker to tag it under *" + tag_name +"*", parse_mode=ParseMode.MARKDOWN)
+            database.update_session(user_id, STICKER_ADD_WAITING_STATE, userSessionObject.tag_id)
 
         elif query.data == "sticker_action_delete":
-            if userSessionObject:
-                tag_name = database.get_tagname_by_tagid(userSessionObject.tag_id)
+            tag_name = database.get_tagname_by_tagid(userSessionObject.tag_id)
 
-                query.message.reply_text("Send sticker to delete it under *" + tag_name +"*", parse_mode=ParseMode.MARKDOWN)
-                database.update_session(user_id, STICKER_MODE, STICKER_DELETE_WAITING_STATE, userSessionObject.tag_id)
+            query.message.reply_text("Send sticker to delete it under *" + tag_name +"*", parse_mode=ParseMode.MARKDOWN)
+            database.update_session(user_id, STICKER_DELETE_WAITING_STATE, userSessionObject.tag_id)
 
-        else:
-            tag_dictionary = json.loads(query.data)
 
-            sticker_action_keyboard = [[InlineKeyboardButton("Add sticker", callback_data="sticker_action_add")],
-                 [InlineKeyboardButton("Delete sticker", callback_data="sticker_action_delete")]]
+    userSessionObject = check_session(user_id, STICKER_TAG_WAITING_STATE)
+    if userSessionObject:
+        tag_dictionary = json.loads(query.data)
 
-            query.message.reply_text("Choose action:", reply_markup=InlineKeyboardMarkup(sticker_action_keyboard))
-            database.update_session(user_id, STICKER_MODE, STICKER_TAG_QUERY_WAITING_STATE, tag_dictionary['id'])
+        sticker_action_keyboard = [[InlineKeyboardButton("Add sticker", callback_data="sticker_action_add")],
+             [InlineKeyboardButton("Delete sticker", callback_data="sticker_action_delete")]]
 
-        
+        query.message.reply_text("Choose action:", reply_markup=InlineKeyboardMarkup(sticker_action_keyboard))
+        database.update_session(user_id, STICKER_ACTION_WAITING_STATE, tag_dictionary['id'])
+
+
+    userSessionObject = check_session(user_id, TAG_DELETE_WAITING_STATE)
+    if userSessionObject:
+        tag_dictionary = json.loads(query.data)
+        tag_id = tag_dictionary['id']
+
+        database.delete_tag_by_id(tag_id)
+
+        update.message.reply_text("/deletetag : delete more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        database.update_session(user_id, NO_STATE)
+
     return
 
-# def tag_end(bot, update, user_data):
-#     update.message.reply_text("Bye bye")
-#     user_data.clear()
+def end(bot, update):
+    update.message.reply_text("Thank you for using WhoStickBot!")
+    database.update_session(update.message.from_user.id, NO_STATE)
 
-#     return ConversationHandler.END
+    return
 
 def error(bot, update, error):
     logger.warn('Update "%s" caused error "%s"' % (update, error))

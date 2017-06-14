@@ -32,6 +32,19 @@ class Database:
 
         return
 
+    def delete_tag_by_id(self, tag_id):
+        tagObject = self.session.query(Tag).get(tag_id)
+        self.session.delete(tagObject)
+
+        # delete all the stickers tagged under the tag_id
+        stickerObjects = self.session.query(Sticker).filter_by(tag_id=tag_id)
+        if stickerObjects.first():
+            self.session.delete(stickerObjects)
+
+        self.session.commit()
+
+        return
+
 
     def get_tag_by_userid(self, user_id):
         result = self.session.query(Tag).filter(Tag.user_id == user_id)
@@ -69,10 +82,9 @@ class Database:
         return result.first()
 
 
-    def update_session(self, user_id, mode, state, tag_id=None):
+    def update_session(self, user_id, state, tag_id=0):
         userSessionObject = self.session.query(UserSession).filter_by(user_id=user_id).first()
 
-        userSessionObject.mode = mode
         userSessionObject.state = state
         userSessionObject.tag_id = tag_id
 

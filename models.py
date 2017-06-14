@@ -25,5 +25,4 @@ class UserSession(Base):
 
     user_id = Column(Integer, primary_key=True)
     state = Column(Integer)
-    mode = Column(Integer)
     tag_id = Column(Integer)
