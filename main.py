@@ -203,7 +203,6 @@ def sticker_action(bot, update):
     userSessionObject = check_session(user_id, STICKER_ADD_WAITING_STATE)
     if userSessionObject:
         tag_id = userSessionObject.tag_id
-        tag_name = database.get_tagname_by_tagid(tag_id)
 
         stickerObject = Sticker(sticker_uuid=update.message.sticker.file_id,
                                 user_id=userSessionObject.user_id,
@@ -212,20 +211,19 @@ def sticker_action(bot, update):
 
         update.message.reply_text("Sticker added!\nContinue sending to add more!\n\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
 
-        database.update_session(user_id, STICKER_ADD_WAITING_STATE)
+        database.update_session(user_id, STICKER_ADD_WAITING_STATE, tag_id)
 
     
     userSessionObject = check_session(user_id, STICKER_DELETE_WAITING_STATE)
     if userSessionObject:
         sticker_to_delete_uuid = update.message.sticker.file_id
         tag_id = userSessionObject.tag_id
-        tag_name = database.get_tagname_by_tagid(tag_id)
 
         database.delete_sticker_by_userid_and_tagid_stickeruuid(user_id, tag_id, sticker_to_delete_uuid)
 
         update.message.reply_text("Sticker deleted!\nContinue sending to delete more!\n\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
 
-        database.update_session(user_id, STICKER_DELETE_WAITING_STATE)
+        database.update_session(user_id, STICKER_DELETE_WAITING_STATE, tag_id)
 
     return
 
