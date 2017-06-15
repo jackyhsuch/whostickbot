@@ -228,9 +228,6 @@ def sticker_action(bot, update):
     return
 
 
-
-
-
 def tag_add(bot, update):
     user_id = update.message.from_user.id
 
@@ -282,7 +279,7 @@ def all_callback_query(bot, update):
 
         database.delete_tag_by_id(tag_id)
 
-        update.message.reply_text("/deletetag : delete more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        query.message.reply_text("/deletetag : delete more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
         database.update_session(user_id, NO_STATE)
 
     return
