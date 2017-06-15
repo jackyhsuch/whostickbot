@@ -43,13 +43,13 @@ def Main():
     start_handler = CommandHandler('start', start)
     dispatcher.add_handler(start_handler)
     # create new tag
-    newtag_handler = CommandHandler('newtag', newtag)
+    newtag_handler = CommandHandler('newTag', newtag)
     dispatcher.add_handler(newtag_handler)
     # delete tag
-    deletetag_handler = CommandHandler('deletetag', deletetag)
+    deletetag_handler = CommandHandler('deleteTag', deletetag)
     dispatcher.add_handler(deletetag_handler)
     # edit tag - add stickers
-    edittag_handler = CommandHandler('edittag', edittag)
+    edittag_handler = CommandHandler('editTag', edittag)
     dispatcher.add_handler(edittag_handler)
     # end - exit bot
     end_handler = CommandHandler('end', end)
@@ -135,7 +135,7 @@ def start(bot, update):
     user_id = update.message.from_user.id
     check_new_user(user_id)
 
-    update.message.reply_text("Welcome to WhoStickBot!\n\n/newtag : to add tag\n/edittag : to add stickers\n/deletetag : to delete tag\n/end : to exit bot", parse_mode=ParseMode.MARKDOWN)
+    update.message.reply_text("Welcome to WhoStickBot!\n\n/newTag : to add tag\n/editTag : to add stickers\n/deleteTag : to delete tag\n/end : to exit bot", parse_mode=ParseMode.MARKDOWN)
 
     return
 
@@ -236,7 +236,7 @@ def tag_add(bot, update):
         tagObject = Tag(user_id=user_id, name=update.message.text.lower())
         database.add_tag(tagObject)
 
-        update.message.reply_text("/edittag : add sticker to tag\n/newtag : add more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        update.message.reply_text("/editTag : add sticker to tag\n/newTag : add more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
         database.update_session(user_id, TAG_ACTION_QUERY_WAITING_STATE)
 
     return
@@ -279,7 +279,7 @@ def all_callback_query(bot, update):
 
         database.delete_tag_by_id(tag_id)
 
-        query.message.reply_text("/deletetag : delete more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        query.message.reply_text("/deleteTag : delete more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
         database.update_session(user_id, NO_STATE)
 
     return
