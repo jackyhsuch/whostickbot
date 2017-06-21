@@ -120,10 +120,12 @@ def inlinequery(bot, update):
 
     # get tag id by user and tag name
     tagResult = database.get_tag_by_userid_and_tagname(user_id, tag_name)
-    tagObject = tagResult.first()
+    tagObjects = tagResult.all()
+    stickerObjects = []
     # get stickers by user uuid and tag id
-    if tagObject is not None:
-        stickerObjects = database.get_sticker_by_userid_and_tagid(user_id, tagObject.id)
+    if tagObjects is not None:
+        for tagObject in tagObjects:
+            stickerObjects.append(database.get_sticker_by_userid_and_tagid(user_id, tagObject.id))
 
         for stickerObject in stickerObjects:
             results.append(InlineQueryResultCachedSticker(id=stickerObject.id, sticker_file_id=stickerObject.sticker_uuid))
