@@ -53,7 +53,7 @@ class Database:
 
 
     def get_tag_by_userid_and_tagname(self, user_id, tag_name):
-        result = self.session.query(Tag).filter(Tag.user_id == user_id, Tag.name.like("%" + tag_name + "%"))
+        result = self.session.query(Tag).filter(Tag.user_id == user_id, Tag.name.like(tag_name + "%"))
 
         return result
 
