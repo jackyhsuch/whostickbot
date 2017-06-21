@@ -56,22 +56,20 @@ def Main():
     dispatcher.add_handler(end_handler)
 
 
-    # tag add - adding tag name
-    tag_add_handler = MessageHandler(Filters.text, tag_add)
-    dispatcher.add_handler(tag_add_handler)
-    # sticker add - adding sticker to db
-    sticker_action_handler = MessageHandler(Filters.sticker, sticker_action)
-    dispatcher.add_handler(sticker_action_handler)
+    # handle all texts
+    all_text_handler = MessageHandler(Filters.text, all_text)
+    dispatcher.add_handler(all_text_handler)
 
+    # handle all stickers
+    all_sticker_handler = MessageHandler(Filters.sticker, all_sticker)
+    dispatcher.add_handler(all_sticker_handler)
 
-    # tag query - handle all the callback query of tag
+    # handle all the callback
     all_callback_query_handler = CallbackQueryHandler(all_callback_query)
     dispatcher.add_handler(all_callback_query_handler)
 
-
     # inline query
     dispatcher.add_handler(InlineQueryHandler(inlinequery))
-
 
     # log all errors
     dispatcher.add_error_handler(error)
@@ -186,23 +184,25 @@ def edittag(bot, update):
     tagObjects = database.get_tag_by_userid(user_id)
 
     sticker_tag_keyboard = []
+    button_list = []
     for tagObject in tagObjects:
         callbackDict = {
             'id': tagObject.id,
             'name': tagObject.name
         }
 
-        sticker_tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False))])
+        button_list.append(InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False)))
 
+    reply_markup = InlineKeyboardMarkup(build_menu(button_list, 2))
 
-    update.message.reply_text("Choose tag:", reply_markup=InlineKeyboardMarkup(sticker_tag_keyboard))
+    update.message.reply_text("Choose tag:", reply_markup=reply_markup)
 
     database.update_session(user_id, STICKER_TAG_WAITING_STATE)
 
     return
 
 
-def sticker_action(bot, update):
+def all_sticker(bot, update):
     user_id = update.message.from_user.id
 
     userSessionObject = check_session(user_id, STICKER_ADD_WAITING_STATE)
@@ -233,7 +233,7 @@ def sticker_action(bot, update):
     return
 
 
-def tag_add(bot, update):
+def all_text(bot, update):
     user_id = update.message.from_user.id
 
     if check_session(user_id, TAG_ADD_WAITING_STATE):
@@ -297,6 +297,15 @@ def end(bot, update):
 
 def error(bot, update, error):
     logger.warn('Update "%s" caused error "%s"' % (update, error))
+
+def build_menu(buttons, n_cols, header_buttons, footer_buttons):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+    if header_buttons:
+        menu.insert(0, header_buttons)
+    if footer_buttons:
+        menu.append(footer_buttons)
+
+    return menu
 
 
 if __name__ == '__main__':
