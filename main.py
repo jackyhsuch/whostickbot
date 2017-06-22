@@ -241,8 +241,10 @@ def all_text(bot, update):
         tagObject = Tag(user_id=user_id, name=tag_name)
         database.add_tag(tagObject)
 
+        tagObject = database.get_tag_by_userid_and_tagname(user_id, tag_name)
+
         update.message.reply_text("Send sticker to tag it under *" + tag_name +"*"+"\n\n/newtag : add more tags\n/edittag : choose other tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
-        database.update_session(user_id, STICKER_ADD_WAITING_STATE)
+        database.update_session(user_id, STICKER_ADD_WAITING_STATE, tagObject.id)
 
     return
 
