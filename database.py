@@ -38,8 +38,9 @@ class Database:
 
         # delete all the stickers tagged under the tag_id
         stickerObjects = self.session.query(Sticker).filter_by(tag_id=tag_id)
-        if stickerObjects.first():
-            self.session.delete(stickerObjects)
+        if stickerObjects:
+            for stickerObject in stickerObjects:
+                self.session.delete(stickerObject)
 
         self.session.commit()
 
