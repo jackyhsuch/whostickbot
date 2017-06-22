@@ -13,15 +13,14 @@ import json
 NO_STATE = 0
 
 # tag states
-TAG_ACTION_QUERY_WAITING_STATE = 1
-TAG_ADD_WAITING_STATE = 2
-TAG_DELETE_WAITING_STATE = 3
+TAG_ADD_WAITING_STATE = 1
+TAG_DELETE_WAITING_STATE = 2
 
 # sticker states
-STICKER_TAG_WAITING_STATE = 4
-STICKER_ACTION_WAITING_STATE = 5
-STICKER_ADD_WAITING_STATE = 6
-STICKER_DELETE_WAITING_STATE = 7
+STICKER_TAG_WAITING_STATE = 3
+STICKER_ACTION_WAITING_STATE = 4
+STICKER_ADD_WAITING_STATE = 5
+STICKER_DELETE_WAITING_STATE = 6
 
 environment = Environment()
 database = Database(environment.DB_URI)
@@ -241,8 +240,8 @@ def all_text(bot, update):
         tagObject = Tag(user_id=user_id, name=update.message.text.lower())
         database.add_tag(tagObject)
 
-        update.message.reply_text("/edittag : add sticker to tag\n/newtag : add more tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
-        database.update_session(user_id, TAG_ACTION_QUERY_WAITING_STATE)
+        update.message.reply_text("Send sticker to tag it under *" + tag_name +"*"+"\n\n/newtag : add more tags\n/edittag : choose other tags\n/end : exit bot", parse_mode=ParseMode.MARKDOWN)
+        database.update_session(user_id, STICKER_ADD_WAITING_STATE)
 
     return
 
