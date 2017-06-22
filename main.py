@@ -159,16 +159,18 @@ def deletetag(bot, update):
     tagObjects = database.get_tag_by_userid(user_id)
 
     tag_keyboard = []
+    button_list = []
     for tagObject in tagObjects:
         callbackDict = {
             'id': tagObject.id,
             'name': tagObject.name
         }
 
-        tag_keyboard.append([InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False))])
+        button_list.append(InlineKeyboardButton(tagObject.name, callback_data=json.dumps(callbackDict, ensure_ascii=False)))
 
+    reply_markup = InlineKeyboardMarkup(build_menu(button_list, 2))
 
-    update.message.reply_text("Choose tag to delete:", reply_markup=InlineKeyboardMarkup(tag_keyboard))
+    update.message.reply_text("Choose tag to delete:", reply_markup=reply_markup)
 
     database.update_session(user_id, TAG_DELETE_WAITING_STATE)
 
